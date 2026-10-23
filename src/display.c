@@ -147,13 +147,13 @@ asp_err_t asp_disp_init_pax_buf(pax_buf_t* buf) {
         case ASP_DISP_ROTATION_0:
             break;
         case ASP_DISP_ROTATION_90:
-            pax_buf_set_orientation(buf, PAX_O_ROT_CW);
+            pax_buf_set_orientation(buf, PAX_O_ROT_CCW);
             break;
         case ASP_DISP_ROTATION_180:
             pax_buf_set_orientation(buf, PAX_O_ROT_HALF);
             break;
         case ASP_DISP_ROTATION_270:
-            pax_buf_set_orientation(buf, PAX_O_ROT_CCW);
+            pax_buf_set_orientation(buf, PAX_O_ROT_CW);
             break;
     }
 
