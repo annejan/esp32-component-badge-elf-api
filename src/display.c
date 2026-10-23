@@ -181,6 +181,7 @@ asp_err_t asp_disp_write_pax(pax_buf_t* img) {
     if (w != img->width || h != img->height) {
         return ASP_ERR_PARAM;
     }
+    pax_join();  // the host may render asynchronously
     return asp_esp_err_conv(bsp_display_blit(0, 0, w, h, pax_buf_get_pixels(img)));
 }
 
@@ -204,5 +205,6 @@ asp_err_t asp_disp_write_part(void const* fb, uint16_t x, uint16_t y, uint16_t w
 // **Note: It is up to the user to apply rotation, if needed.**
 asp_err_t asp_disp_write_part_pax(pax_buf_t* img, uint16_t x, uint16_t y) {
     // TODO: Replace direct access of width and height with the PAX API since 2.0.
+    pax_join();  // the host may render asynchronously
     return asp_disp_write_part(pax_buf_get_pixels(img), x, y, img->width, img->height);
 }
