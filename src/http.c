@@ -22,12 +22,29 @@ asp_err_t asp_net_is_connected(bool* out_connected) {
     return ASP_OK;
 }
 
+// Read the response body into `response` (at most max_len - 1 bytes, then a
+// NUL). Reads until the server is done, so a chunked response (no
+// Content-Length) arrives too.
+static void read_body(esp_http_client_handle_t client, char* response, size_t max_len) {
+    if (!response || max_len == 0) return;
+    size_t total = 0;
+    while (total < max_len - 1) {
+        int n = esp_http_client_read(client, response + total, max_len - 1 - total);
+        if (n <= 0) break;
+        total += n;
+    }
+    response[total] = '\0';
+}
+
 asp_err_t asp_http_get(const char* url, char* response, size_t max_len, int* out_status_code) {
     if (!url || !out_status_code) return ASP_ERR_PARAM;
 
     esp_http_client_config_t config = {
         .url = url,
         .timeout_ms = 10000,
+        // HTTPS: trust the certificates the firmware put in the global CA
+        // store (esp_tls_set_global_ca_store); plain HTTP ignores this.
+        .use_global_ca_store = true,
     };
 
     esp_http_client_handle_t client = esp_http_client_init(&config);
@@ -41,16 +58,10 @@ asp_err_t asp_http_get(const char* url, char* response, size_t max_len, int* out
         return ASP_ERR_FAIL;
     }
 
-    int content_length = esp_http_client_fetch_headers(client);
+    esp_http_client_fetch_headers(client);
     *out_status_code = esp_http_client_get_status_code(client);
 
-    if (response && max_len > 0 && content_length > 0) {
-        size_t read_len = (size_t)content_length < max_len - 1 ? (size_t)content_length : max_len - 1;
-        int actual = esp_http_client_read(client, response, read_len);
-        if (actual >= 0) {
-            response[actual] = '\0';
-        }
-    }
+    read_body(client, response, max_len);
 
     esp_http_client_close(client);
     esp_http_client_cleanup(client);
@@ -65,6 +76,7 @@ asp_err_t asp_http_post(const char* url, const char* body, char* response, size_
         .url = url,
         .method = HTTP_METHOD_POST,
         .timeout_ms = 10000,
+        .use_global_ca_store = true,
     };
 
     esp_http_client_handle_t client = esp_http_client_init(&config);
@@ -85,16 +97,10 @@ asp_err_t asp_http_post(const char* url, const char* body, char* response, size_
         esp_http_client_write(client, body, body_len);
     }
 
-    int content_length = esp_http_client_fetch_headers(client);
+    esp_http_client_fetch_headers(client);
     *out_status_code = esp_http_client_get_status_code(client);
 
-    if (response && max_len > 0 && content_length > 0) {
-        size_t read_len = (size_t)content_length < max_len - 1 ? (size_t)content_length : max_len - 1;
-        int actual = esp_http_client_read(client, response, read_len);
-        if (actual >= 0) {
-            response[actual] = '\0';
-        }
-    }
+    read_body(client, response, max_len);
 
     esp_http_client_close(client);
     esp_http_client_cleanup(client);
